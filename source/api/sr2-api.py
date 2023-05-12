@@ -58,16 +58,17 @@ class Vote(db.Model):
     time = db.Column(db.DateTime, default=datetime.datetime.now)
 
 def design_spec(design):
-    output = {}
-    output["id"] = design.id
-    output["name"] = design.name
-    output["size"] = design.size
-    output["data"] = design.data
-    output["author"] = design.author
-    output["color"] = design.color
-    output["description"] = design.description
-    output["mods"] = design.mods
-    output["ctime"] = design.ctime.strftime("%Y-%m-%d %H:%M")
+    output = {
+        "id": design.id,
+        "name": design.name,
+        "size": design.size,
+        "data": design.data,
+        "author": design.author,
+        "color": design.color,
+        "description": design.description,
+        "mods": design.mods,
+        "ctime": design.ctime.strftime("%Y-%m-%d %H:%M"),
+    }
     output["commentCount"] = design.commentCount
     output["upvotes"] = design.upvotes
 
@@ -84,11 +85,7 @@ def design_list(query, paginate=True):
             pagestart = pagelimit * int(flask.request.args["page"])
         query = query.slice(pagestart, pagestart+pagelimit+1);
 
-    #Unify in output
-    output = []
-    for d in query.all():
-        output.append(design_spec(d))
-    return output
+    return [design_spec(d) for d in query.all()]
 
 @app.route("/design/<int:design_id>")
 def design(design_id):
@@ -100,8 +97,7 @@ def design(design_id):
 
     output = design_spec(design)
 
-    token = flask.request.headers.get("APIToken")
-    if token:
+    if token := flask.request.headers.get("APIToken"):
         output["hasUpvoted"] = Vote.query.filter_by(design=design.id, token=token).count() != 0
         output["isMine"] = design.token == token
     else:
@@ -112,13 +108,14 @@ def design(design_id):
     output["comments"] = clist
 
     comments = Comment.query.filter_by(design=design.id)
-    for c in comments:
-        clist.append({
+    clist.extend(
+        {
             "author": c.author,
             "ctime": c.ctime.strftime("%Y-%m-%d %H:%M"),
-            "content": c.content
-            })
-
+            "content": c.content,
+        }
+        for c in comments
+    )
     design.views += 1
     db.session.commit()
 
@@ -211,8 +208,7 @@ def submit_design():
     design.mods = flask.request.form.get("mods", "base")
     design.color = flask.request.form.get("color", "#ffffff")
 
-    token = flask.request.headers.get("APIToken")
-    if token:
+    if token := flask.request.headers.get("APIToken"):
         design.token = token
 
     try:
@@ -240,7 +236,9 @@ def designs_toprated():
 
 @app.route("/designs/search/<term>")
 def designs_search(term):
-    q = Design.query.filter(or_(Design.name.like("%"+term+"%"), Design.author.like("%"+term+"%")))
+    q = Design.query.filter(
+        or_(Design.name.like(f"%{term}%"), Design.author.like(f"%{term}%"))
+    )
     return json.dumps(design_list(q))
 
 @app.route("/designs/featured")
@@ -256,7 +254,11 @@ def designs_featured():
     for d in featured:
         if any(x["id"] == d["id"] for x in output):
             continue
-        d["description"] = d["description"] if len(d["description"]) < 120 else d["description"][0:120]
+        d["description"] = (
+            d["description"]
+            if len(d["description"]) < 120
+            else d["description"][:120]
+        )
         output.append(d)
         if len(output) > 6:
             break
@@ -275,12 +277,12 @@ def latest_list():
     NEW_HASHES = data["new_hashes"]
 
     if LATEST_VERSION not in VERSIONS:
-        return "Invalid latest version: "+LATEST_VERSION
+        return f"Invalid latest version: {LATEST_VERSION}"
     ver = VERSIONS[LATEST_VERSION]
-    output = ""
-    for relfile, filehash in ver["files"].items():
-        output += relfile+"\t"+filehash+"\n"
-    return output
+    return "".join(
+        relfile + "\t" + filehash + "\n"
+        for relfile, filehash in ver["files"].items()
+    )
 
 @app.route("/updates/<prevhash>/<newhash>")
 def get_file(prevhash, newhash):

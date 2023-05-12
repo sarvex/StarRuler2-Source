@@ -38,13 +38,15 @@ class  Formatter:
         self.block_index = self.identifiers.keys()
         self.block_index.sort( index_sort )
 
-    def  add_identifier( self, name, block ):
+    def add_identifier( self, name, block ):
         if self.identifiers.has_key( name ):
             # duplicate name!
-            sys.stderr.write(                                           \
-               "WARNING: duplicate definition for '" + name + "' in " + \
-               block.location() + ", previous definition in " +         \
-               self.identifiers[name].location() + "\n" )
+            sys.stderr.write(
+                (
+                    f"WARNING: duplicate definition for '{name}' in {block.location()}, previous definition in {self.identifiers[name].location()}"
+                    + "\n"
+                )
+            )
         else:
             self.identifiers[name] = block
 
@@ -72,11 +74,8 @@ class  Formatter:
     def  toc_exit( self ):
         pass
 
-    def  toc_dump( self, toc_filename = None, index_filename = None ):
-        output = None
-        if toc_filename:
-            output = open_output( toc_filename )
-
+    def toc_dump( self, toc_filename = None, index_filename = None ):
+        output = open_output( toc_filename ) if toc_filename else None
         self.toc_enter()
 
         for chap in self.processor.chapters:
@@ -111,11 +110,8 @@ class  Formatter:
     def  index_exit( self ):
         pass
 
-    def  index_dump( self, index_filename = None ):
-        output = None
-        if index_filename:
-            output = open_output( index_filename )
-
+    def index_dump( self, index_filename = None ):
+        output = open_output( index_filename ) if index_filename else None
         self.index_enter()
 
         for name in self.block_index:
@@ -154,11 +150,8 @@ class  Formatter:
     def  section_exit( self, section ):
         pass
 
-    def  section_dump( self, section, section_filename = None ):
-        output = None
-        if section_filename:
-            output = open_output( section_filename )
-
+    def section_dump( self, section, section_filename = None ):
+        output = open_output( section_filename ) if section_filename else None
         self.section_enter( section )
 
         for name in section.block_names:

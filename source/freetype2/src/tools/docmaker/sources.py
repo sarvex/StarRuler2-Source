@@ -200,7 +200,7 @@ re_source_keywords = re.compile( '''\\b ( typedef   |
 ##
 class  SourceBlock:
 
-    def  __init__( self, processor, filename, lineno, lines ):
+    def __init__( self, processor, filename, lineno, lines ):
         self.processor = processor
         self.filename  = filename
         self.lineno    = lineno
@@ -208,7 +208,7 @@ class  SourceBlock:
         self.format    = processor.format
         self.content   = []
 
-        if self.format == None:
+        if self.format is None:
             return
 
         words = []
@@ -217,8 +217,7 @@ class  SourceBlock:
         lines = []
 
         for line0 in self.lines:
-            m = self.format.column.match( line0 )
-            if m:
+            if m := self.format.column.match(line0):
                 lines.append( m.group( 1 ) )
 
         # now, look for a markup tag
@@ -230,8 +229,8 @@ class  SourceBlock:
                         self.content = lines
                         return
 
-    def  location( self ):
-        return "(" + self.filename + ":" + repr( self.lineno ) + ")"
+    def location( self ):
+        return f"({self.filename}:{repr(self.lineno)})"
 
     # debugging only - not used in normal operations
     def  dump( self ):
@@ -281,7 +280,7 @@ class  SourceProcessor:
         self.blocks = []
         self.format = None
 
-    def  parse_file( self, filename ):
+    def parse_file( self, filename ):
         """parse a C source file, and add its blocks to the processor's list"""
         self.reset()
 
@@ -295,26 +294,25 @@ class  SourceProcessor:
         for line in fileinput.input( filename ):
             # strip trailing newlines, important on Windows machines!
             if line[-1] == '\012':
-                line = line[0:-1]
+                line = line[:-1]
 
-            if self.format == None:
+            if self.format is None:
                 self.process_normal_line( line )
+            elif self.format.end.match( line ):
+                # that's a normal block end, add it to 'lines' and
+                # create a new block
+                self.lines.append( line )
+                self.add_block_lines()
+            elif self.format.column.match( line ):
+                # that's a normal column line, add it to 'lines'
+                self.lines.append( line )
             else:
-                if self.format.end.match( line ):
-                    # that's a normal block end, add it to 'lines' and
-                    # create a new block
-                    self.lines.append( line )
-                    self.add_block_lines()
-                elif self.format.column.match( line ):
-                    # that's a normal column line, add it to 'lines'
-                    self.lines.append( line )
-                else:
-                    # humm.. this is an unexpected block end,
-                    # create a new block, but don't process the line
-                    self.add_block_lines()
+                # humm.. this is an unexpected block end,
+                # create a new block, but don't process the line
+                self.add_block_lines()
 
-                    # we need to process the line again
-                    self.process_normal_line( line )
+                # we need to process the line again
+                self.process_normal_line( line )
 
         # record the last lines
         self.add_block_lines()

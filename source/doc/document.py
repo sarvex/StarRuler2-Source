@@ -33,15 +33,15 @@ def main(infile, outdir):
 		edata["classmap"] = {c["name"] for c in edata["classes"]}
 		edata["enummap"] = {e["name"] for e in edata["enums"]}
 
-		render("template.index.html", "%s.index.html" % engine, edata)
-		render("template.globals.html", "%s.globals.html" % engine, edata)
-		render("template.functions.html", "%s.functions.html" % engine, edata)
+		render("template.index.html", f"{engine}.index.html", edata)
+		render("template.globals.html", f"{engine}.globals.html", edata)
+		render("template.functions.html", f"{engine}.functions.html", edata)
 
 		for cls in edata["classes"]:
-			render("template.class.html", "%s.class.%s.html" % (engine, cls["name"]), cls)
+			render("template.class.html", f'{engine}.class.{cls["name"]}.html', cls)
 
 		for en in edata["enums"]:
-			render("template.enum.html", "%s.enum.%s.html" % (engine, en["name"]), en)
+			render("template.enum.html", f'{engine}.enum.{en["name"]}.html', en)
 
 
 if __name__ == '__main__':

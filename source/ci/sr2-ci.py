@@ -44,10 +44,7 @@ class BuildStep(object):
 class BuildGame32(BuildStep):
     @classmethod
     def neededBy(cls, path):
-        for d in SOURCE_LINUX:
-            if path.startswith(d):
-                return True
-        return False
+        return any(path.startswith(d) for d in SOURCE_LINUX)
 
     def execute(self):
         #Build 32-bit version
@@ -58,14 +55,16 @@ class BuildGame32(BuildStep):
 
         self.build32 = subprocess.Popen(
             ["ARCH=32 make -f source/linux/Makefile -j3 version compile"],
-            shell=True, cwd=SOURCE_FOLDER,
-            stdout=open(os.path.join(LOG_FOLDER, "build32_"+CURRENT_COMMIT+".log"), "w"),
-            stderr=subprocess.STDOUT)
+            shell=True,
+            cwd=SOURCE_FOLDER,
+            stdout=open(
+                os.path.join(LOG_FOLDER, f"build32_{CURRENT_COMMIT}.log"), "w"
+            ),
+            stderr=subprocess.STDOUT,
+        )
 
     def finished(self):
-        if self.build32.poll() == None:
-            return False
-        return True
+        return self.build32.poll() is not None
 
     def finalize(self):
         if self.build32.returncode == 0:
@@ -74,10 +73,7 @@ class BuildGame32(BuildStep):
 class BuildGame64(BuildStep):
     @classmethod
     def neededBy(cls, path):
-        for d in SOURCE_LINUX:
-            if path.startswith(d):
-                return True
-        return False
+        return any(path.startswith(d) for d in SOURCE_LINUX)
 
     def execute(self):
         self.clean64 = subprocess.Popen(
@@ -87,14 +83,16 @@ class BuildGame64(BuildStep):
 
         self.build64 = subprocess.Popen(
             ["ARCH=64 make -f source/linux/Makefile -j3 version compile"],
-            shell=True, cwd=SOURCE_FOLDER,
-            stdout=open(os.path.join(LOG_FOLDER, "build64_"+CURRENT_COMMIT+".log"), "w"),
-            stderr=subprocess.STDOUT)
+            shell=True,
+            cwd=SOURCE_FOLDER,
+            stdout=open(
+                os.path.join(LOG_FOLDER, f"build64_{CURRENT_COMMIT}.log"), "w"
+            ),
+            stderr=subprocess.STDOUT,
+        )
 
     def finished(self):
-        if self.build64.poll() == None:
-            return False
-        return True
+        return self.build64.poll() is not None
 
     def finalize(self):
         if self.build64.returncode == 0:
@@ -103,31 +101,35 @@ class BuildGame64(BuildStep):
 class BuildAS32(BuildStep):
     @classmethod
     def neededBy(cls, path):
-        if path.startswith("source/angelscript/"):
-            return True
-        return False
+        return bool(path.startswith("source/angelscript/"))
 
     def execute(self):
         self.build32 = subprocess.Popen(
             ["ARCH=32 make -f source/linux/Makefile -j3 angelscript"],
-            shell=True, cwd=SOURCE_FOLDER,
-            stdout=open(os.path.join(LOG_FOLDER, "as32_"+CURRENT_COMMIT+".log"), "w"),
-            stderr=subprocess.STDOUT)
+            shell=True,
+            cwd=SOURCE_FOLDER,
+            stdout=open(
+                os.path.join(LOG_FOLDER, f"as32_{CURRENT_COMMIT}.log"), "w"
+            ),
+            stderr=subprocess.STDOUT,
+        )
         self.build32.wait();
 
 class BuildAS64(BuildStep):
     @classmethod
     def neededBy(cls, path):
-        if path.startswith("source/angelscript/"):
-            return True
-        return False
+        return bool(path.startswith("source/angelscript/"))
 
     def execute(self):
         self.build64 = subprocess.Popen(
             ["ARCH=64 make -f source/linux/Makefile -j3 angelscript"],
-            shell=True, cwd=SOURCE_FOLDER,
-            stdout=open(os.path.join(LOG_FOLDER, "as64_"+CURRENT_COMMIT+".log"), "w"),
-            stderr=subprocess.STDOUT)
+            shell=True,
+            cwd=SOURCE_FOLDER,
+            stdout=open(
+                os.path.join(LOG_FOLDER, f"as64_{CURRENT_COMMIT}.log"), "w"
+            ),
+            stderr=subprocess.STDOUT,
+        )
         self.build64.wait();
 
 class BuildWindows(BuildStep):
@@ -136,10 +138,7 @@ class BuildWindows(BuildStep):
 
     @classmethod
     def neededBy(cls, path):
-        for d in SOURCE_WINDOWS:
-            if path.startswith(d):
-                return True
-        return False
+        return any(path.startswith(d) for d in SOURCE_WINDOWS)
 
     def execute(self):
         pass
@@ -166,28 +165,30 @@ class BuildWindows(BuildStep):
 
         for f in os.listdir(os.path.join(DEST_FOLDER, "bin/win32")):
             if f.endswith(".exe") or f.endswith(".dll"):
-                Dest.stage("bin/win32/"+f)
+                Dest.stage(f"bin/win32/{f}")
 
         for f in os.listdir(os.path.join(DEST_FOLDER, "bin/win64")):
             if f.endswith(".exe") or f.endswith(".dll"):
-                Dest.stage("bin/win64/"+f)
+                Dest.stage(f"bin/win64/{f}")
 
         #Rename the log to indicate the commit
         if os.path.exists(os.path.join(LOG_FOLDER, "msvc32_build.log")):
-            os.rename(os.path.join(LOG_FOLDER, "msvc32_build.log"),
-                    os.path.join(LOG_FOLDER, "msvc32_"+CURRENT_COMMIT+".log"))
+            os.rename(
+                os.path.join(LOG_FOLDER, "msvc32_build.log"),
+                os.path.join(LOG_FOLDER, f"msvc32_{CURRENT_COMMIT}.log"),
+            )
 
         if os.path.exists(os.path.join(LOG_FOLDER, "msvc64_build.log")):
-            os.rename(os.path.join(LOG_FOLDER, "msvc64_build.log"),
-                    os.path.join(LOG_FOLDER, "msvc64_"+CURRENT_COMMIT+".log"))
+            os.rename(
+                os.path.join(LOG_FOLDER, "msvc64_build.log"),
+                os.path.join(LOG_FOLDER, f"msvc64_{CURRENT_COMMIT}.log"),
+            )
 
 
 BUILD_STEPS = [BuildAS32, BuildAS64, BuildGame32, BuildGame64, BuildWindows]
 
 def publish_file(path):
-    if path.startswith("source/"):
-        return False
-    return True
+    return not path.startswith("source/")
 
 def copy(path):
     folder = os.path.dirname(path)
@@ -247,9 +248,7 @@ def listCommits(repo, front, back, l):
             c = stack.pop()
             if c.id not in back:
                 back.add(c.id)
-                for parent in c._get_parents():
-                    stack.append(repo.commit(parent))
-
+                stack.extend(repo.commit(parent) for parent in c._get_parents())
     #Make sure it isn't already done
     if front in back:
         return
@@ -289,11 +288,11 @@ def main():
             global CURRENT_COMMIT
             CURRENT_COMMIT = c.id
             switchTo(SOURCE_FOLDER, c.id)
-            print("Executing commit "+c.id)
+            print(f"Executing commit {c.id}")
 
             #Iterate through the difference tree
             diff = tree_changes(Source, base_tree, c.tree)
-            steps = [False for x in BUILD_STEPS]
+            steps = [False for _ in BUILD_STEPS]
             for d in diff:
                 #Handle deletes
                 if d.type == 'delete':

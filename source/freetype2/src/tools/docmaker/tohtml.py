@@ -197,104 +197,92 @@ def  dump_html_code( lines, prefix = "" ):
 
 class  HtmlFormatter( Formatter ):
 
-    def  __init__( self, processor, project_title, file_prefix ):
+    def __init__( self, processor, project_title, file_prefix ):
         Formatter.__init__( self, processor )
 
         global html_header_1, html_header_2, html_header_3
         global html_header_4, html_header_5, html_footer
 
-        if file_prefix:
-            file_prefix = file_prefix + "-"
-        else:
-            file_prefix = ""
-
         self.headers           = processor.headers
         self.project_title     = project_title
+        file_prefix = f"{file_prefix}-" if file_prefix else ""
         self.file_prefix       = file_prefix
         self.html_header       = html_header_1 + project_title +              \
-                                 html_header_2 +                              \
-                                 html_header_3 + file_prefix + "index.html" + \
-                                 html_header_4 + file_prefix + "toc.html" +   \
-                                 html_header_5 + project_title +              \
-                                 html_header_6
+                                     html_header_2 +                              \
+                                     html_header_3 + file_prefix + "index.html" + \
+                                     html_header_4 + file_prefix + "toc.html" +   \
+                                     html_header_5 + project_title +              \
+                                     html_header_6
 
         self.html_index_header = html_header_1 + project_title +             \
-                                 html_header_2 +                             \
-                                 html_header_3i + file_prefix + "toc.html" + \
-                                 html_header_5 + project_title +             \
-                                 html_header_6
+                                     html_header_2 +                             \
+                                     html_header_3i + file_prefix + "toc.html" + \
+                                     html_header_5 + project_title +             \
+                                     html_header_6
 
         self.html_toc_header   = html_header_1 + project_title +              \
-                                 html_header_2 +                              \
-                                 html_header_3 + file_prefix + "index.html" + \
-                                 html_header_5t + project_title +             \
-                                 html_header_6
+                                     html_header_2 +                              \
+                                     html_header_3 + file_prefix + "index.html" + \
+                                     html_header_5t + project_title +             \
+                                     html_header_6
 
-        self.html_footer       = "<center><font size=""-2"">generated on " +     \
-                                 time.asctime( time.localtime( time.time() ) ) + \
-                                 "</font></center>" + html_footer
+        self.html_footer = f"<center><font size=-2>generated on {time.asctime(time.localtime(time.time()))}</font></center>{html_footer}"
 
         self.columns = 3
 
     def  make_section_url( self, section ):
         return self.file_prefix + section.name + ".html"
 
-    def  make_block_url( self, block ):
-        return self.make_section_url( block.section ) + "#" + block.name
+    def make_block_url( self, block ):
+        return f"{self.make_section_url(block.section)}#{block.name}"
 
-    def  make_html_words( self, words ):
+    def make_html_words( self, words ):
         """ convert a series of simple words into some HTML text """
         line = ""
         if words:
             line = html_quote( words[0] )
             for w in words[1:]:
-                line = line + " " + html_quote( w )
+                line = f"{line} {html_quote(w)}"
 
         return line
 
-    def  make_html_word( self, word ):
+    def make_html_word( self, word ):
         """analyze a simple word to detect cross-references and styling"""
-        # look for cross-references
-        m = re_crossref.match( word )
-        if m:
+        if m := re_crossref.match(word):
             try:
                 name = m.group( 1 )
                 rest = m.group( 2 )
                 block = self.identifiers[name]
                 url   = self.make_block_url( block )
-                return '<a href="' + url + '">' + name + '</a>' + rest
+                return f'<a href="{url}">{name}</a>{rest}'
             except:
                 # we detected a cross-reference to an unknown item
-                sys.stderr.write( \
-                   "WARNING: undefined cross reference '" + name + "'.\n" )
-                return '?' + name + '?' + rest
+                sys.stderr.write(f"WARNING: undefined cross reference '{name}" + "'.\n")
+                return f'?{name}?{rest}'
 
-        # look for italics and bolds
-        m = re_italic.match( word )
-        if m:
+        if m := re_italic.match(word):
             name = m.group( 1 )
             rest = m.group( 3 )
-            return '<i>' + name + '</i>' + rest
+            return f'<i>{name}</i>{rest}'
 
-        m = re_bold.match( word )
-        if m:
+        if m := re_bold.match(word):
             name = m.group( 1 )
             rest = m.group( 3 )
-            return '<b>' + name + '</b>' + rest
+            return f'<b>{name}</b>{rest}'
 
         return html_quote( word )
 
-    def  make_html_para( self, words ):
+    def make_html_para( self, words ):
         """ convert words of a paragraph into tagged HTML text, handle xrefs """
         line = ""
         if words:
             line = self.make_html_word( words[0] )
             for word in words[1:]:
-                line = line + " " + self.make_html_word( word )
+                line = f"{line} {self.make_html_word(word)}"
             # convert `...' quotations into real left and right single quotes
             line = re.sub( r"(^|\W)`(.*?)'(\W|$)",  \
-                           r'\1&lsquo;\2&rsquo;\3', \
-                           line )
+                               r'\1&lsquo;\2&rsquo;\3', \
+                               line )
             # convert tilde into non-breakable space
             line = string.replace( line, "~", "&nbsp;" )
 
@@ -331,11 +319,10 @@ class  HtmlFormatter( Formatter ):
         if field.name:
             print "</td></tr></table>"
 
-    def  html_source_quote( self, line, block_name = None ):
+    def html_source_quote( self, line, block_name = None ):
         result = ""
         while line:
-            m = re_source_crossref.match( line )
-            if m:
+            if m := re_source_crossref.match(line):
                 name   = m.group( 2 )
                 prefix = html_quote( m.group( 1 ) )
                 length = len( m.group( 0 ) )
@@ -350,7 +337,7 @@ class  HtmlFormatter( Formatter ):
                     # this is a known identifier
                     block = self.identifiers[name]
                     result = result + prefix + '<a href="' + \
-                             self.make_block_url( block ) + '">' + name + '</a>'
+                                 self.make_block_url( block ) + '">' + name + '</a>'
                 else:
                     result = result + html_quote( line[:length] )
 
@@ -435,9 +422,9 @@ class  HtmlFormatter( Formatter ):
 
         self.index_items = {}
 
-    def  index_dump( self, index_filename = None ):
-        if index_filename == None:
-            index_filename = self.file_prefix + "index.html"
+    def index_dump( self, index_filename = None ):
+        if index_filename is None:
+            index_filename = f"{self.file_prefix}index.html"
 
         Formatter.index_dump( self, index_filename )
 
@@ -478,12 +465,12 @@ class  HtmlFormatter( Formatter ):
 
         print self.html_footer
 
-    def  toc_dump( self, toc_filename = None, index_filename = None ):
-        if toc_filename == None:
-            toc_filename = self.file_prefix + "toc.html"
+    def toc_dump( self, toc_filename = None, index_filename = None ):
+        if toc_filename is None:
+            toc_filename = f"{self.file_prefix}toc.html"
 
-        if index_filename == None:
-            index_filename = self.file_prefix + "index.html"
+        if index_filename is None:
+            index_filename = f"{self.file_prefix}index.html"
 
         Formatter.toc_dump( self, toc_filename, index_filename )
 

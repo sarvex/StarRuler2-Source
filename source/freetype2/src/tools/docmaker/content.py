@@ -69,11 +69,8 @@ class  DocCode:
         for l in lines:
             print prefix + l
 
-    def  dump_lines( self, margin = 0, width = 60 ):
-        result = []
-        for l in self.lines:
-            result.append( " " * margin + l )
-        return result
+    def dump_lines( self, margin = 0, width = 60 ):
+        return [" " * margin + l for l in self.lines]
 
 
 
@@ -97,7 +94,7 @@ class  DocPara:
         for l in lines:
             print prefix + l
 
-    def  dump_lines( self, margin = 0, width = 60 ):
+    def dump_lines( self, margin = 0, width = 60 ):
         cur    = ""  # current line
         col    = 0   # current width
         result = []
@@ -105,7 +102,7 @@ class  DocPara:
         for word in self.words:
             ln = len( word )
             if col > 0:
-                ln = ln + 1
+                ln += 1
 
             if col + ln > width:
                 result.append( " " * margin + cur )
@@ -113,7 +110,7 @@ class  DocPara:
                 col = len( word )
             else:
                 if col > 0:
-                    cur = cur + " "
+                    cur = f"{cur} "
                 cur = cur + word
                 col = col + ln
 
@@ -132,7 +129,7 @@ class  DocPara:
 #
 class  DocField:
 
-    def  __init__( self, name, lines ):
+    def __init__( self, name, lines ):
         self.name  = name  # can be None for normal paragraphs/sources
         self.items = []    # list of items
 
@@ -163,30 +160,26 @@ class  DocField:
                 else:
                     # nope, continue the code sequence
                     cur_lines.append( l[margin:] )
-            else:
-                # start of code sequence ?
-                m = re_code_start.match( l )
-                if m:
-                    # save current lines
-                    if cur_lines:
-                        para = DocPara( cur_lines )
-                        self.items.append( para )
-                        cur_lines = []
+            elif m := re_code_start.match(l):
+                # save current lines
+                if cur_lines:
+                    para = DocPara( cur_lines )
+                    self.items.append( para )
+                    cur_lines = []
 
-                    # switch to code extraction mode
-                    margin = len( m.group( 1 ) )
-                    mode   = mode_code
-                else:
-                    if not string.split( l ) and cur_lines:
-                        # if the line is empty, we end the current paragraph,
-                        # if any
-                        para = DocPara( cur_lines )
-                        self.items.append( para )
-                        cur_lines = []
-                    else:
-                        # otherwise, simply add the line to the current
-                        # paragraph
-                        cur_lines.append( l )
+                # switch to code extraction mode
+                margin = len( m.group( 1 ) )
+                mode   = mode_code
+            elif not string.split( l ) and cur_lines:
+                # if the line is empty, we end the current paragraph,
+                # if any
+                para = DocPara( cur_lines )
+                self.items.append( para )
+                cur_lines = []
+            else:
+                # otherwise, simply add the line to the current
+                # paragraph
+                cur_lines.append( l )
 
         if mode == mode_code:
             # unexpected end of code sequence
@@ -231,7 +224,7 @@ re_field = re.compile( r"\s*(\w*|\w(\w|\.)*\w)\s*::" )
 
 class  DocMarkup:
 
-    def  __init__( self, tag, lines ):
+    def __init__( self, tag, lines ):
         self.tag    = string.lower( tag )
         self.fields = []
 
@@ -240,8 +233,7 @@ class  DocMarkup:
         mode      = 0
 
         for l in lines:
-            m = re_field.match( l )
-            if m:
+            if m := re_field.match(l):
                 # we detected the start of a new field definition
 
                 # first, save the current one
@@ -268,11 +260,11 @@ class  DocMarkup:
         except:
             return None
 
-    def  get_start( self ):
+    def get_start( self ):
         try:
             result = ""
             for word in self.fields[0].items[0].words:
-                result = result + " " + word
+                result = f"{result} {word}"
             return result[1:]
         except:
             return "ERROR"
@@ -321,11 +313,10 @@ class  DocSection:
         self.block_names.append( block.name )
         self.blocks[block.name] = block
 
-    def  process( self ):
+    def process( self ):
         # look up one block that contains a valid section description
         for block in self.defs:
-            title = block.get_markup_text( "title" )
-            if title:
+            if title := block.get_markup_text("title"):
                 self.title       = title
                 self.abstract    = block.get_markup_words( "abstract" )
                 self.description = block.get_markup_items( "description" )
@@ -386,7 +377,7 @@ class  ContentProcessor:
             self.markup       = None
             self.markup_lines = []
 
-    def  process_content( self, content ):
+    def process_content( self, content ):
         """process a block content and return a list of DocMarkup objects
            corresponding to it"""
         markup       = None
@@ -396,8 +387,7 @@ class  ContentProcessor:
         for line in content:
             found = None
             for t in re_markup_tags:
-                m = t.match( line )
-                if m:
+                if m := t.match(line):
                     found  = string.lower( m.group( 1 ) )
                     prefix = len( m.group( 0 ) )
                     line   = " " * prefix + line[prefix:]   # remove markup from line
@@ -435,7 +425,7 @@ class  ContentProcessor:
 
                 doc_block = DocBlock( source, follow, self )
 
-    def  finish( self ):
+    def finish( self ):
         # process all sections to extract their abstract, description
         # and ordered list of items
         #
@@ -452,21 +442,12 @@ class  ContentProcessor:
                     section.reorder()
                     chap.sections.append( section )
                 else:
-                    sys.stderr.write( "WARNING: chapter '" +          \
-                        chap.name + "' in " + chap.block.location() + \
-                        " lists unknown section '" + sec + "'\n" )
+                    sys.stderr.write(
+                        f"WARNING: chapter '{chap.name}' in {chap.block.location()} lists unknown section '{sec}"
+                        + "'\n"
+                    )
 
-        # check that all sections are in a chapter
-        #
-        others = []
-        for sec in self.sections.values():
-            if not sec.chapter:
-                others.append( sec )
-
-        # create a new special chapter for all remaining sections
-        # when necessary
-        #
-        if others:
+        if others := [sec for sec in self.sections.values() if not sec.chapter]:
             chap = DocChapter( None )
             chap.sections = others
             self.chapters.append( chap )
@@ -475,7 +456,7 @@ class  ContentProcessor:
 
 class  DocBlock:
 
-    def  __init__( self, source, follow, processor ):
+    def __init__( self, source, follow, processor ):
         processor.reset()
 
         self.source  = source
@@ -496,8 +477,7 @@ class  DocBlock:
             markup = self.markups[0]
             para   = markup.fields[0].items[0]
             name   = para.words[0]
-            m = re_identifier.match( name )
-            if m:
+            if m := re_identifier.match(name):
                 name = m.group( 1 )
             self.name = name
         except:
@@ -520,9 +500,7 @@ class  DocBlock:
             if b.format:
                 break
             for l in b.lines:
-                # collect header macro definitions
-                m = re_header_macro.match( l )
-                if m:
+                if m := re_header_macro.match(l):
                     processor.headers[m.group( 2 )] = m.group( 1 );
 
                 # we use "/* */" as a separator
@@ -535,7 +513,7 @@ class  DocBlock:
         end   = len( source ) - 1
 
         while start < end and not string.strip( source[start] ):
-            start = start + 1
+            start += 1
 
         while start < end and not string.strip( source[end] ):
             end = end - 1
@@ -548,12 +526,11 @@ class  DocBlock:
     def  location( self ):
         return self.source.location()
 
-    def  get_markup( self, tag_name ):
+    def get_markup( self, tag_name ):
         """return the DocMarkup corresponding to a given tag in a block"""
-        for m in self.markups:
-            if m.tag == string.lower( tag_name ):
-                return m
-        return None
+        return next(
+            (m for m in self.markups if m.tag == string.lower(tag_name)), None
+        )
 
     def  get_markup_name( self, tag_name ):
         """return the name of a given primary markup in a block"""
